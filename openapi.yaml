@@ -3,6 +3,8 @@ info:
   title: Booksim Runner
   description: Run NoC simulations via Booksim using natural language-generated configs.
   version: 1.0.0
+servers:
+  - url: https://bookin-wgvp.onrender.com
 paths:
   /run-generated-config:
     post:
