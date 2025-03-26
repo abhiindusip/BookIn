@@ -9,11 +9,11 @@
   },
   "api": {
     "type": "openapi",
-    "url": "https://booksim-plugin.onrender.com/openapi.yaml"
+    "url": "https://bookin-wgvp.onrender.com/openapi.yaml"
   },
-  "logo_url": "https://booksim-plugin.onrender.com/logo.png",
+  "logo_url": "https://bookin-wgvp.onrender.com/logo.png",
   "contact_email": "your@email.com",
-  "legal_info_url": "https://booksim-plugin.onrender.com/legal",
-  "privacy_policy_url": "https://booksim-plugin.onrender.com/privacy"
+  "legal_info_url": "https://bookin-wgvp.onrender.com/legal",
+  "privacy_policy_url": "https://bookin-wgvp.onrender.com/privacy"
 }
 
