@@ -1,80 +1,25 @@
 import os
-import re
-import shutil
 import subprocess
 import datetime
 
-# === Config Paths ===
+# === Paths ===
 
-CONFIG_DIR = "/home/param/Desktop/noc_tools/booksim2/src/examples"
-BOOKSIM_BINARY = "/home/param/Desktop/noc_tools/booksim2/src/booksim"
+BASE_DIR = os.path.dirname(__file__)
+BOOKSIM_BINARY = os.path.join(BASE_DIR, "booksim2", "src", "booksim")
 
-CONFIG_MAP = {
-    "mesh": "mesh88_lat",
-    "torus": "torus88",
-    "fat tree": "fattree_config",
-    "cmesh": "cmeshconfig",
-    "dragonfly": "dragonflyconfig",
-    "flatfly": "flatflyconfig",
-    "single": "singleconfig"
-}
+# === Save full GPT-generated config string to a temp file ===
 
-# === STEP 1: Select config based on prompt ===
+def save_generated_config(config_str: str) -> str:
+    os.makedirs("temp_configs", exist_ok=True)
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    config_path = f"temp_configs/generated_{timestamp}.cfg"
 
-def select_config_from_prompt(prompt: str):
-    prompt = prompt.lower()
-    for key in CONFIG_MAP:
-        if key in prompt:
-            config_file = CONFIG_MAP[key]
-            config_path = os.path.join(CONFIG_DIR, config_file)
-            return config_path, {"topology": key, "config_file": config_file}
-    raise ValueError("No valid topology found in prompt.")
+    with open(config_path, "w") as f:
+        f.write(config_str)
 
-# === STEP 2: Patch config file with updates ===
+    return config_path
 
-def customize_config(config_path: str, updates: dict) -> str:
-    temp_path = config_path + "_temp"
-    shutil.copy(config_path, temp_path)
-
-    with open(temp_path, "r") as f:
-        lines = f.readlines()
-
-    for idx, line in enumerate(lines):
-        match = re.match(r"^(\w+)\s*=\s*([^;]+);", line.strip())
-        if match:
-            key, _ = match.groups()
-            if key in updates:
-                value = str(updates[key]).strip()
-                lines[idx] = f"{key} = {value};\n"
-
-    with open(temp_path, "w") as f:
-        f.writelines(lines)
-
-    return temp_path
-
-# === STEP 3a: Extract summary metrics from output ===
-
-def extract_metrics_from_output(output: str) -> dict:
-    metrics = {}
-    for line in output.splitlines():
-        line = line.strip()
-        if "Packet latency average" in line:
-            metrics["avg_latency"] = float(line.split("=")[-1].strip())
-        elif "Network latency average" in line:
-            metrics["avg_network_latency"] = float(line.split("=")[-1].strip())
-        elif "Injected packet rate average" in line:
-            metrics["injected_packet_rate"] = float(line.split("=")[-1].strip())
-        elif "Accepted packet rate average" in line:
-            metrics["accepted_packet_rate"] = float(line.split("=")[-1].strip())
-        elif "Injected packet length average" in line:
-            metrics["injected_packet_length"] = float(line.split("=")[-1].strip())
-        elif "Accepted packet length average" in line:
-            metrics["accepted_packet_length"] = float(line.split("=")[-1].strip())
-        elif "Hops average" in line:
-            metrics["avg_hops"] = float(line.split("=")[-1].strip())
-    return metrics
-
-# === STEP 3b: Run Booksim simulation and log everything ===
+# === Run the Booksim simulation ===
 
 def run_simulation(config_path: str) -> dict:
     process = subprocess.run(
@@ -89,15 +34,16 @@ def run_simulation(config_path: str) -> dict:
     errors = process.stderr
     returncode = process.returncode
 
-    # --- Save Full Log ---
+    # Save full output to log file
     os.makedirs("logs", exist_ok=True)
-    basename = os.path.basename(config_path).replace("_temp", "")
+    basename = os.path.basename(config_path).replace("_temp", "").replace(".cfg", "")
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     log_filename = f"logs/{basename}_{timestamp}.log"
 
     with open(log_filename, "w") as log_file:
         log_file.write(output)
 
+    # Extract metrics
     metrics = extract_metrics_from_output(output) if returncode == 0 else {}
 
     return {
@@ -108,3 +54,32 @@ def run_simulation(config_path: str) -> dict:
         "log_file": log_filename
     }
 
+# === Extract metrics from Booksim output ===
+
+def extract_metrics_from_output(output: str) -> dict:
+    metrics = {}
+    for line in output.splitlines():
+        line = line.strip()
+        if "Packet latency average" in line:
+            metrics["avg_latency"] = _extract_last_float(line)
+        elif "Network latency average" in line:
+            metrics["avg_network_latency"] = _extract_last_float(line)
+        elif "Injected packet rate average" in line:
+            metrics["injected_packet_rate"] = _extract_last_float(line)
+        elif "Accepted packet rate average" in line:
+            metrics["accepted_packet_rate"] = _extract_last_float(line)
+        elif "Injected packet length average" in line:
+            metrics["injected_packet_length"] = _extract_last_float(line)
+        elif "Accepted packet length average" in line:
+            metrics["accepted_packet_length"] = _extract_last_float(line)
+        elif "Hops average" in line:
+            metrics["avg_hops"] = _extract_last_float(line)
+    return metrics
+
+# === Helper to pull last float in a line ===
+
+def _extract_last_float(line: str) -> float:
+    try:
+        return float(line.split("=")[-1].strip())
+    except ValueError:
+        return -1.0
