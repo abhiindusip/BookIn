@@ -9,84 +9,114 @@ paths:
   /run-generated-config:
     post:
       summary: Run Generated Config
-      operationId: run_generated_config_run_generated_config_post
+      operationId: run_generated_config
       requestBody:
+        required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/GeneratedConfigRequest'
-        required: true
       responses:
         '200':
-          description: Successful Response
+          description: Simulation output
           content:
             application/json:
-              schema: {}
+              schema:
+                $ref: '#/components/schemas/SimulationResponse'
         '422':
           description: Validation Error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+        - ApiKeyAuth: []
+
   /openapi.yaml:
     get:
-      summary: Serve Openapi Yaml
-      operationId: serve_openapi_yaml_openapi_yaml_get
+      summary: Serve OpenAPI Yaml
+      operationId: serve_openapi_yaml
       responses:
         '200':
-          description: Successful Response
+          description: OpenAPI file served
           content:
             text/plain:
               schema:
                 type: string
+
   /logo.png:
     get:
       summary: Get Logo
-      operationId: get_logo_logo_png_get
+      operationId: get_logo
       responses:
         '200':
-          description: Successful Response
+          description: Logo file served
           content:
-            application/json:
-              schema: {}
+            image/png:
+              schema:
+                type: string
+                format: binary
+
   /legal:
     get:
       summary: Legal Info
-      operationId: legal_info_legal_get
+      operationId: get_legal_info
       responses:
         '200':
-          description: Successful Response
+          description: Legal info
           content:
             application/json:
               schema: {}
+
 components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+
   schemas:
     GeneratedConfigRequest:
+      type: object
+      title: GeneratedConfigRequest
+      required:
+        - config_str
       properties:
         config_str:
           type: string
           title: Config Str
+
+    SimulationResponse:
       type: object
-      required:
-      - config_str
-      title: GeneratedConfigRequest
-    HTTPValidationError:
+      title: SimulationResponse
       properties:
-        detail:
-          items:
-            $ref: '#/components/schemas/ValidationError'
-          type: array
-          title: Detail
+        output:
+          type: string
+        errors:
+          type: string
+
+    HTTPValidationError:
       type: object
       title: HTTPValidationError
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+
     ValidationError:
+      type: object
+      required:
+        - loc
+        - msg
+        - type
       properties:
         loc:
+          type: array
           items:
             anyOf:
-            - type: string
-            - type: integer
-          type: array
+              - type: string
+              - type: integer
           title: Location
         msg:
           type: string
@@ -94,9 +124,3 @@ components:
         type:
           type: string
           title: Error Type
-      type: object
-      required:
-      - loc
-      - msg
-      - type
-      title: ValidationError
